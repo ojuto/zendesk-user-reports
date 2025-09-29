@@ -1,0 +1,49 @@
+name: Build and send user report
+
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: '0 5 7 * *'
+
+jobs:
+    build-and-send:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Use Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Start application
+              env:
+                  ZENDESK_VI_EMAIL: ${{ secrets.ZENDESK_VI_EMAIL }}
+                  ZENDESK_VI_API_TOKEN: ${{ secrets.ZENDESK_VI_API_TOKEN }}
+                  ZENDESK_VDE_EMAIL: ${{ secrets.ZENDESK_VDE_EMAIL }}
+                  ZENDESK_VDE_API_TOKEN: ${{ secrets.ZENDESK_VDE_API_TOKEN }}
+                  ZENDESK_VI_BASE_URL: ${{ secrets.ZENDESK_VI_BASE_URL }}
+                  ZENDESK_VDE_BASE_URL: ${{ secrets.ZENDESK_VDE_BASE_URL }}
+              run: npm start
+
+            - name: Send email with attachment
+              uses: dawidd6/action-send-mail@v3
+              with:
+                  server_address: ${{ secrets.SMTP_HOST }}
+                  server_port: ${{ secrets.SMTP_PORT }}
+                  username: ${{ secrets.SMTP_USERNAME }}
+                  password: ${{ secrets.SMTP_PASSWORD }}
+                  secure: ${{ secrets.SMTP_PORT == 465 && 'true' || 'false' }}
+                  subject: 'User Report'
+                  to: ${{ secrets.MAIL_TO }}
+                  from: ${{ secrets.MAIL_FROM }}
+                  body: |
+                      Anbei der automatisch generierte User Report.
+                  attachments: |
+                      user_report.xlsx
